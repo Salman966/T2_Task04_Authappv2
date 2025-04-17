@@ -1,51 +1,68 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { User } from '../../models/user.model';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { ApiService, LoginPayload, LoginResponse } from '../../services/api.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
-  identity: string = '';
-  password: string = '';
+  loginForm!: FormGroup;
   error: boolean = false;
+  token: string | null = null;
 
   constructor(
+    private fb: FormBuilder,
     private router: Router,
-    private http: HttpClient,
+    private api: ApiService,
     private authService: AuthService
-  ) {}
+  ) {
+   
+    this.loginForm = this.fb.group({
+      identity: ['', Validators.required],
+      password: ['', Validators.required]
+    });
 
-  ngOnInit(): void {
+
     localStorage.removeItem('authUser');
-    console.log('authUser cleared on login page');
+    localStorage.removeItem('authToken');
   }
 
-  login(event: Event): void {
-    event.preventDefault();
-
-    this.http.get<{ users: User[] }>('https://dummyjson.com/users').subscribe((data) => {
-      const user = data.users.find(
-        (u) =>
-          (u.email === this.identity || u.username === this.identity) &&
-          u.password === this.password
-      );
-
-      if (user) {
-        this.authService.setUser(user);
-        this.router.navigateByUrl('/dashboard');
-      } else {
+  login(): void {
+    const payload: LoginPayload = {
+      username: this.loginForm.value.identity,
+      password: this.loginForm.value.password
+    };
+  
+    this.api.login(payload).subscribe({
+      next: (res: LoginResponse) => {
+        const token = res.accessToken;
+        localStorage.setItem('authToken', token);
+        this.token = token; 
+  
+        this.api.getProfile().subscribe({
+          next: (profile) => {
+            console.log('Token:', token); 
+            this.authService.setUser({ ...profile, accessToken: token });
+            this.router.navigateByUrl('/dashboard');
+          },
+          error: (err) => {
+            this.error = true;
+            console.error('❌ Failed to fetch profile:', err);
+          }
+        });
+      },
+      error: () => {
         this.error = true;
         console.log('❌ Invalid credentials');
       }
     });
   }
+  
 }

@@ -1,17 +1,29 @@
 <div class="login-container">
-    <h2>Login</h2>
-    
-    <form (submit)="login($event)">
-      <label for="identity">Email or Username</label>
-      <input type="text" id="identity" [(ngModel)]="identity" name="identity" required />
-    
-      <label for="password">Password</label>
-      <input type="password" id="password" [(ngModel)]="password" name="password" required />
-    
-      <button type="submit">Login</button>
-    </form>
-    
-  
-    <p *ngIf="error" class="error-message">Invalid credentials. Please try again.</p>
-  </div>
-  
+  <h2>Login</h2>
+
+  <form [formGroup]="loginForm" (ngSubmit)="login()">
+    <label for="identity">Email or Username</label>
+    <input
+      type="text"
+      id="identity"
+      formControlName="identity"
+    />
+    <div *ngIf="loginForm.get('identity')?.invalid && loginForm.get('identity')?.touched" class="error-message">
+      Identity is required.
+    </div>
+
+    <label for="password">Password</label>
+    <input
+      type="password"
+      id="password"
+      formControlName="password"
+    />
+    <div *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched" class="error-message">
+      Password is required.
+    </div>
+
+    <button type="submit" [disabled]="loginForm.invalid">Login</button>
+  </form>
+
+  <p *ngIf="error" class="error-message">Invalid credentials. Please try again.</p>
+</div>
