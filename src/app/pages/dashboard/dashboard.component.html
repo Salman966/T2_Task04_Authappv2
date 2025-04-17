@@ -10,21 +10,36 @@
     <button class="logout-button" (click)="logout()">Logout</button>
   </div>
 
-  <div class="tabs">
-    <button [class.active]="activeTab === 'all'" (click)="switchTab('all')">All Posts</button>
-    <button [class.active]="activeTab === 'mine'" (click)="switchTab('mine')">My Posts</button>
+  <form [formGroup]="tabForm" class="tabs">
+    <button type="button" [class.active]="selectedTab === 'all'" (click)="tabForm.patchValue({ selectedTab: 'all' })">
+      All Posts
+    </button>
+    <button type="button" [class.active]="selectedTab === 'mine'" (click)="tabForm.patchValue({ selectedTab: 'mine' })">
+      My Posts
+    </button>
+  </form>
+
+  <div *ngIf="loading()" class="loading-spinner">
+    Loading...
   </div>
 
-  <div class="posts">
-    <div *ngIf="activeTab === 'all'">
+  <div class="posts" *ngIf="!loading()">
+    <div *ngIf="selectedTab === 'all'">
       <div *ngFor="let post of allPosts" class="post">
-        <h3>{{ post.title }}</h3>
+        <div class="post-header">
+          <h3>{{ post.title }}</h3>
+          <button (click)="deletePost(post.id)">Delete</button>
+        </div>
         <p>{{ post.body }}</p>
       </div>
     </div>
-    <div *ngIf="activeTab === 'mine'">
+
+    <div *ngIf="selectedTab === 'mine'">
       <div *ngFor="let post of userPosts" class="post">
-        <h3>{{ post.title }}</h3>
+        <div class="post-header">
+          <h3>{{ post.title }}</h3>
+          <button (click)="deletePost(post.id)">Delete</button>
+        </div>
         <p>{{ post.body }}</p>
       </div>
     </div>

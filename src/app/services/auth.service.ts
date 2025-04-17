@@ -6,18 +6,21 @@ import { User } from '../models/user.model';
 })
 export class AuthService {
   private storageKey = 'authUser';
+  private tokenKey = 'authToken';
 
-  setUser(user: User): void {
+  setUser(user: User & { accessToken: string }): void {
     localStorage.setItem(this.storageKey, JSON.stringify(user));
+    localStorage.setItem(this.tokenKey, user.accessToken);
   }
 
   getUser(): User | null {
     const userJson = localStorage.getItem(this.storageKey);
-    return userJson ? JSON.parse(userJson) : null;
+    return userJson ? JSON.parse(userJson) as User : null;
   }
 
   logout(): void {
     localStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.tokenKey);
   }
 
   isAuthenticated(): boolean {

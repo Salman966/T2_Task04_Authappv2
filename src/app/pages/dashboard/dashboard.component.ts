@@ -1,60 +1,70 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient} from '@angular/common/http';
-import { Router } from '@angular/router';
-import { ActivatedRoute } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { Router, ActivatedRoute } from '@angular/router';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+
 import { Post } from '../../models/post.model';
 import { User } from '../../models/user.model';
+import { ResolvedDashboardData } from '../../resolvers/user.resolver';
 
 @Component({
   standalone: true,
   selector: 'app-dashboard',
-  imports: [CommonModule],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
 })
 export class DashboardComponent {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private http = inject(HttpClient);
+  private fb = inject(FormBuilder);
+
   user: User | null = null;
   allPosts: Post[] = [];
   userPosts: Post[] = [];
-  activeTab: 'all' | 'mine' = 'all';
+  loading = signal(false);
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    private route: ActivatedRoute
+  tabForm: FormGroup = this.fb.group({
+    selectedTab: ['all']
+  });
 
-  ) {}
+  get selectedTab(): 'all' | 'mine' {
+    return this.tabForm.get('selectedTab')?.value;
+  }
 
-  ngOnInit(): void {
-    this.user = this.route.snapshot.data['user'];
-  
-    console.log('Dashboard loaded. User:', this.user);
-  
-    if (!this.user) {
-      console.warn('User not authenticated. Redirecting...');
+  constructor() {
+    const resolvedData = this.route.snapshot.data['user'] as ResolvedDashboardData;
+
+    console.log('Resolved data from resolver:', resolvedData);
+
+    if (!resolvedData || !resolvedData.user) {
       this.router.navigate(['/'], { replaceUrl: true });
       return;
     }
-  
-    this.http
-      .get<{ posts: Post[] }>('https://dummyjson.com/posts')
-      .subscribe((res) => {
-        this.allPosts = res.posts;
-        this.userPosts = res.posts.filter(
-          (post) => post.userId === this.user?.id
-        );
-      });
+
+    this.user = resolvedData.user;
+    this.allPosts = resolvedData.allPosts;
+    this.userPosts = resolvedData.userPosts;
+
+    this.tabForm.get('selectedTab')?.valueChanges.subscribe(() => {
+      this.loading.set(true);
+      setTimeout(() => this.loading.set(false), 500);
+    });
   }
-  
-  
 
   logout(): void {
     localStorage.removeItem('authUser');
-      this.router.navigateByUrl('/', { replaceUrl: true });
+    this.router.navigateByUrl('/', { replaceUrl: true });
   }
 
-  switchTab(tab: 'all' | 'mine'): void {
-    this.activeTab = tab;
+  deletePost(postId: number): void {
+    this.loading.set(true);
+    this.http.delete(`https://dummyjson.com/posts/${postId}`).subscribe(() => {
+      this.allPosts = this.allPosts.filter((p) => p.id !== postId);
+      this.userPosts = this.userPosts.filter((p) => p.id !== postId);
+      this.loading.set(false);
+    }, () => this.loading.set(false));
   }
 }
